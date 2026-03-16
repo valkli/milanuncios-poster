@@ -4,7 +4,7 @@ import asyncio, websockets, json, sys, io, urllib.request, time, subprocess, os
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 TARGET_ID = "23FA8579BE4846FC66E7D1C48EF687E9"
-WS = f"ws://127.0.0.1:18800/devtools/page/{TARGET_ID}"
+WS = f"ws://127.0.0.1:18801/devtools/page/{TARGET_ID}"  # mixmix profile port
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 mid = 0
