@@ -32,7 +32,7 @@ SCRIPT_DIR   = Path(__file__).parent
 PRODUCT_DATA = SCRIPT_DIR / 'temp' / 'product_data.json'
 UPLOADS_DIR  = Path('/tmp/openclaw/uploads')
 IMAGE_FILE   = UPLOADS_DIR / 'product_image.jpg'
-CDP_BASE     = 'http://127.0.0.1:18801'  # mixmix profile port
+CDP_BASE     = 'http://127.0.0.1:18800'  # openclaw profile port
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
