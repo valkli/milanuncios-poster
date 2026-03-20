@@ -83,6 +83,10 @@ def build_filter():
                 "rich_text": {"is_empty": True}
             },
             {
+                "property": "In Stock",
+                "checkbox": {"equals": True}
+            },
+            {
                 "or": [
                     {"property": "donde", "rich_text": {"contains": "magazin"}},
                     {"property": "donde", "rich_text": {"contains": "sklad"}}
