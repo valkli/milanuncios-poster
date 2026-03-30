@@ -10,6 +10,9 @@
 - Публикует 5-7 товаров/день из Notion
 - Отчёты → **Telegram топик 4** (торговля)
 - Zello уведомления через notify_queue.json
+- **Cleanup:** `cleanup_milanuncios.py` — проверка всех условий (In Stock, цена, donde, sold, archived)
+  - Запускается автоматически в начале крона (ЧАСТЬ 0)
+  - Очищает Notion-поля + выдаёт Notion/Milanuncios ссылки в отчёт для ручного удаления
 
 ## Золотое правило
 **БЕЗ ФОТО — НЕ ПУБЛИКОВАТЬ.** Никогда. Без исключений.
@@ -28,8 +31,9 @@
 
 ## Ключевые файлы
 - `fetch_product_for_milanuncios.py` — получение товара из Notion
-- `inject_photo_cdp.py` — инжектор фото через CDP (порт 18800)
-- `cleanup_sold_products.py` — очистка проданных
+- `inject_photo_cdp.py` — инжектор фото через CDP (порт 18801 по умолчанию, поддерживает --port)
+- `cleanup_milanuncios.py` — полная проверка условий (NEW, 29.03.2026)
+- `cleanup_sold_products.py` — очистка проданных (old, для browser-delete)
 - `update_notion_url.py` — запись URL в Notion
 - `temp/product_data.json` — текущий товар
 - `temp/` — все временные файлы

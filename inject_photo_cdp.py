@@ -8,8 +8,9 @@ Reads:  temp/product_data.json  (for image URL)
         Downloads image to /tmp/openclaw/uploads/product_image.jpg
 
 Usage:
-  python inject_photo_cdp.py <cdp_ws_url>
-  python inject_photo_cdp.py  (auto-discovers target from http://127.0.0.1:18800)
+  python inject_photo_cdp.py                     (auto-discovers from default port)
+  python inject_photo_cdp.py --port 18801        (specify CDP port)
+  python inject_photo_cdp.py <cdp_ws_url>        (direct WebSocket URL)
 
 Output:
   OK files=1     — image injected
@@ -32,7 +33,8 @@ SCRIPT_DIR   = Path(__file__).parent
 PRODUCT_DATA = SCRIPT_DIR / 'temp' / 'product_data.json'
 UPLOADS_DIR  = Path('/tmp/openclaw/uploads')
 IMAGE_FILE   = UPLOADS_DIR / 'product_image.jpg'
-CDP_BASE     = 'http://127.0.0.1:18800'  # openclaw profile port
+CDP_PORT     = 18801  # mixmix profile port (Milanuncios is logged in here)
+CDP_BASE     = f'http://127.0.0.1:{CDP_PORT}'
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
@@ -150,10 +152,20 @@ async def inject_via_cdp(ws_url, js_fn):
 
 
 def main():
-    # Get CDP WS URL
-    if len(sys.argv) > 1:
-        ws_url = sys.argv[1]
-    else:
+    global CDP_BASE
+
+    # Parse --port flag
+    ws_url = None
+    args = sys.argv[1:]
+    if '--port' in args:
+        idx = args.index('--port')
+        if idx + 1 < len(args):
+            port = int(args[idx + 1])
+            CDP_BASE = f'http://127.0.0.1:{port}'
+    elif args and not args[0].startswith('-'):
+        ws_url = args[0]  # direct WebSocket URL
+
+    if not ws_url:
         ws_url = get_milanuncios_ws_url()
         if not ws_url:
             print('ERROR: Could not find Milanuncios tab CDP URL')
