@@ -76,12 +76,23 @@ def download_image():
 
 
 def get_milanuncios_ws_url():
-    """Find the Milanuncios tab WebSocket URL via CDP /json endpoint."""
+    """Find the Milanuncios PUBLISH FORM tab WebSocket URL via CDP /json endpoint.
+    Must match /publicar-anuncios-gratis/publicar — NOT mis-anuncios, mis-mensajes, etc.
+    """
     try:
         resp = requests.get(f'{CDP_BASE}/json', timeout=5)
         targets = resp.json()
+        # Priority 1: exact publish form URL
         for t in targets:
-            if 'milanuncios.com' in t.get('url', '') and t.get('type') == 'page':
+            url = t.get('url', '')
+            if t.get('type') == 'page' and '/publicar-anuncios-gratis/publicar' in url:
+                print(f'Found publish form tab: {url[:80]}', file=sys.stderr)
+                return t['webSocketDebuggerUrl']
+        # Priority 2: any milanuncios page (fallback, but warn)
+        for t in targets:
+            url = t.get('url', '')
+            if 'milanuncios.com' in url and t.get('type') == 'page':
+                print(f'WARNING: No publish form tab found, using fallback: {url[:80]}', file=sys.stderr)
                 return t['webSocketDebuggerUrl']
         print('ERROR: No Milanuncios tab found in CDP targets', file=sys.stderr)
         return None
