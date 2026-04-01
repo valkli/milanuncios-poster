@@ -1,156 +1,206 @@
 #!/usr/bin/env python3
-"""Publish one product from Notion to Milanuncios via CDP"""
-import asyncio, websockets, json, sys, io, urllib.request, time, subprocess, os
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+"""Full publish cycle: navigate + inject photo + fill form + publish + get URL"""
+import asyncio, json, sys, pathlib
+import websockets
+import requests
+import subprocess
+import time
 
-TARGET_ID = "23FA8579BE4846FC66E7D1C48EF687E9"
-WS = f"ws://127.0.0.1:18801/devtools/page/{TARGET_ID}"  # mixmix profile port
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PORT = 18801
 
-mid = 0
-def nid():
-    global mid; mid += 1; return mid
-
-async def send(ws, method, params={}):
-    cmd = {'id': nid(), 'method': method, 'params': params}
-    await ws.send(json.dumps(cmd))
+async def cdp_eval(ws, js, cmd_id_list):
+    cid = cmd_id_list[0]
+    cmd_id_list[0] += 1
+    await ws.send(json.dumps({"id": cid, "method": "Runtime.evaluate", "params": {"expression": js, "returnByValue": True}}))
     while True:
-        r = json.loads(await ws.recv())
-        if r.get('id') == cmd['id']: return r
+        msg = json.loads(await ws.recv())
+        if msg.get("id") == cid:
+            return msg.get("result", {}).get("result", {}).get("value")
 
-async def js(ws, expr):
-    r = await send(ws, 'Runtime.evaluate', {'expression': expr, 'returnByValue': True, 'awaitPromise': True})
-    return r.get('result', {}).get('result', {}).get('value', '')
+async def cdp_navigate(ws, url, cmd_id_list):
+    cid = cmd_id_list[0]
+    cmd_id_list[0] += 1
+    await ws.send(json.dumps({"id": cid, "method": "Page.navigate", "params": {"url": url}}))
+    await asyncio.sleep(3)
+
+def get_tabs():
+    r = requests.get(f"http://127.0.0.1:{PORT}/json", timeout=5)
+    return r.json()
+
+def get_form_tab():
+    tabs = get_tabs()
+    for t in tabs:
+        if "milanuncios.com/publicar" in t.get("url","") and t.get("type") == "page":
+            return t["webSocketDebuggerUrl"]
+    return None
+
+def get_any_ma_tab():
+    tabs = get_tabs()
+    for t in tabs:
+        if "milanuncios.com" in t.get("url","") and t.get("type") == "page":
+            return t["webSocketDebuggerUrl"]
+    return None
 
 async def main():
-    # Load product data
-    data_file = os.path.join(SCRIPT_DIR, 'temp', 'product_data.json')
-    with open(data_file, encoding='utf-8') as f:
-        data = json.load(f)
-    p = data['properties']
+    # Load product
+    data_file = pathlib.Path("milanuncios-poster/temp/product_data.json")
+    product = json.loads(data_file.read_text("utf-8"))
+    props = product["properties"]
+    notion_id = product["notion_id"]
     
-    name = p.get('Name','').replace('\\(','(').replace('\\)',')')
-    title = name[:60] if len(name) > 60 else name
-    desc = f"{name}. En perfecto estado. Producto de segunda mano en buen estado."
-    price = str(int(p.get('Selling Price', 5)))
-    notion_id = data['notion_id']
+    title_full = props["Name"].replace("\\-", "-").replace("\\(", "(").replace("\\)", ")")
+    title = title_full[:70].rstrip()
+    desc_text = (
+        f"{title_full[:200]}. "
+        f"Estado: {'como nuevo' if props.get('Status') == 'as_good_as_new' else 'usado'}. "
+        "Funciona perfectamente."
+    )[:800]
+    price_val = str(int(props["Selling Price"]))
     
-    print(f"Publishing: {title[:50]}...")
-    print(f"Price: {price}€, Notion ID: {notion_id}")
+    # Step 1: Navigate to publish form
+    ws_url = get_form_tab() or get_any_ma_tab()
+    if not ws_url:
+        print("ERROR: no milanuncios tab")
+        sys.exit(1)
     
-    async with websockets.connect(WS, max_size=10*1024*1024) as ws:
-        # Navigate to publish form
-        await send(ws, 'Page.navigate', {'url': 'https://www.milanuncios.com/publicar-anuncios-gratis/publicar?c=447'})
-        await asyncio.sleep(4)
-        page_title = await js(ws, 'document.title')
-        print(f"Page: {page_title[:50]}")
+    async with websockets.connect(ws_url, max_size=10_000_000) as ws:
+        cmd_id = [1]
         
-        # Inject photo via separate script
-        print("Injecting photo...")
-        result = subprocess.run(
-            [sys.executable, os.path.join(SCRIPT_DIR, 'inject_photo_cdp.py')],
-            capture_output=True, text=True, cwd=SCRIPT_DIR
-        )
-        print("Photo:", result.stdout.strip()[-50:] if result.stdout else result.stderr.strip()[-50:])
-        await asyncio.sleep(1)
+        # Navigate to publish form
+        await cdp_navigate(ws, "https://www.milanuncios.com/publicar-anuncios-gratis/publicar?c=447", cmd_id)
+        print("Navigated to form")
+    
+    # Step 2: Inject photo (external script)
+    await asyncio.sleep(2)
+    result = subprocess.run(
+        ["python", "milanuncios-poster/inject_photo_cdp.py", "--port", str(PORT)],
+        capture_output=True, text=True, timeout=30
+    )
+    output = result.stdout + result.stderr
+    if "OK files=1" not in output:
+        if "NO_IMAGE" in output or "no image" in output.lower():
+            print("SKIP: NO_IMAGE")
+            return "NO_IMAGE"
+        print("INJECT_ERROR:", output[-200:])
+        return "ERROR"
+    print("Photo injected OK")
+    await asyncio.sleep(2)
+    
+    # Step 3: Fill form
+    ws_url = get_form_tab()
+    if not ws_url:
+        print("ERROR: form tab gone after inject")
+        return "ERROR"
+    
+    async with websockets.connect(ws_url, max_size=10_000_000) as ws:
+        cmd_id = [1]
         
         # Fill title
-        r = await js(ws, f"""(function(){{
-            var el = document.querySelector('input#title');
-            if(!el) return 'NF';
-            el.focus();
-            el.select();
-            document.execCommand('insertText', false, {json.dumps(title)});
-            return 'OK:' + el.value.length;
-        }})()""")
-        print(f"Title: {r}")
+        js = f"""(function() {{
+  var el = document.querySelector("input[placeholder*='vendes']");
+  if (!el) return "NOT FOUND";
+  var setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+  setter.call(el, {json.dumps(title)});
+  el.dispatchEvent(new Event('input', {{bubbles:true}}));
+  el.dispatchEvent(new Event('change', {{bubbles:true}}));
+  return "OK:" + el.value.substring(0,30);
+}})()"""
+        r = await cdp_eval(ws, js, cmd_id)
+        print("Title:", r)
         await asyncio.sleep(0.3)
         
-        # Fill description
-        r = await js(ws, f"""(function(){{
-            var el = document.querySelector('textarea#description');
-            if(!el) return 'NF';
-            el.focus();
-            document.execCommand('selectAll', false, null);
-            document.execCommand('delete', false, null);
-            document.execCommand('insertText', false, {json.dumps(desc)});
-            return 'OK:' + el.value.length;
-        }})()""")
-        print(f"Desc: {r}")
-        await asyncio.sleep(0.3)
-        
-        # Set Estado = Prácticamente nuevo
-        r = await js(ws, """(function(){
-            var all = document.querySelectorAll('*');
-            for(var el of all){
-                if(el.childElementCount === 0 && el.textContent.trim() === 'Pr\u00e1cticamente nuevo'){
-                    el.click(); return 'OK';
-                }
-            }
-            return 'NF';
-        })()""")
-        print(f"Estado: {r}")
+        # Fill desc
+        js = f"""(function() {{
+  var el = document.querySelector("textarea");
+  if (!el) return "NOT FOUND";
+  var setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+  setter.call(el, {json.dumps(desc_text)});
+  el.dispatchEvent(new Event('input', {{bubbles:true}}));
+  el.dispatchEvent(new Event('change', {{bubbles:true}}));
+  return "OK:" + el.value.substring(0,30);
+}})()"""
+        r = await cdp_eval(ws, js, cmd_id)
+        print("Desc:", r)
         await asyncio.sleep(0.3)
         
         # Fill price
-        r = await js(ws, f"""(function(){{
-            var el = document.querySelector('input[type="number"]');
-            if(!el) return 'NF';
-            el.focus();
-            el.select();
-            document.execCommand('insertText', false, '{price}');
-            return 'OK';
-        }})()""")
-        print(f"Price: {r}")
+        js = f"""(function() {{
+  var el = document.querySelector("input[type='number']");
+  if (!el) return "NOT FOUND";
+  var setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+  setter.call(el, {json.dumps(price_val)});
+  el.dispatchEvent(new Event('input', {{bubbles:true}}));
+  el.dispatchEvent(new Event('change', {{bubbles:true}}));
+  return "OK:" + el.value;
+}})()"""
+        r = await cdp_eval(ws, js, cmd_id)
+        print("Price:", r)
+        await asyncio.sleep(0.3)
+        
+        # Select condition
+        js = """(function() {
+  var opts = Array.from(document.querySelectorAll("li, div[role='option']"));
+  var opt = opts.find(o => {
+    var t = o.textContent.trim().toLowerCase();
+    return t.startsWith("practic") || t.includes("como nuevo");
+  });
+  if (!opt) return "NOT_FOUND_YET";
+  opt.click();
+  return "SELECTED:" + opt.textContent.trim().substring(0,30);
+})()"""
+        r = await cdp_eval(ws, js, cmd_id)
+        print("Condition:", r)
         await asyncio.sleep(0.3)
         
         # Click Publicar
-        r = await js(ws, """(function(){
-            var btns = Array.from(document.querySelectorAll('button'));
-            for(var b of btns){ if(b.textContent.trim()==='Publicar'){b.click();return 'OK';} }
-            return 'NF';
-        })()""")
-        print(f"Publicar click: {r}")
+        js = """(function() {
+  var btns = Array.from(document.querySelectorAll("button"));
+  var pub = btns.find(b => b.textContent.trim() === "Publicar");
+  if (!pub) return "NOT FOUND";
+  pub.click();
+  return "CLICKED";
+})()"""
+        r = await cdp_eval(ws, js, cmd_id)
+        print("Publicar:", r)
+        await asyncio.sleep(4)
+        
+        # Check for dialog
+        js = """(function() {
+  var btns = Array.from(document.querySelectorAll("button"));
+  var noenvio = btns.find(b => b.textContent.toLowerCase().includes("sin env") || b.textContent.toLowerCase().includes("publicar sin"));
+  if (noenvio) { noenvio.click(); return "CLICKED_SIN_ENVIO"; }
+  if (document.body.innerText.includes("Enhorabuena")) return "SUCCESS";
+  return "UNKNOWN";
+})()"""
+        r = await cdp_eval(ws, js, cmd_id)
+        print("Dialog:", r)
+        
+        if r == "CLICKED_SIN_ENVIO":
+            await asyncio.sleep(5)
+        
+        # Wait for page to load after publish
         await asyncio.sleep(3)
         
-        # Handle "sin envio" dialog
-        r = await js(ws, """(function(){
-            var all = Array.from(document.querySelectorAll('a,button'));
-            for(var e of all){
-                if(e.textContent.indexOf('sin env') !== -1){ e.click(); return 'OK:' + e.textContent.trim(); }
-            }
-            return 'no dialog';
-        })()""")
-        print(f"Sin envio: {r}")
-        await asyncio.sleep(5)
+        # Navigate to get the ad URL
+        await cdp_navigate(ws, "https://www.milanuncios.com/mis-anuncios", cmd_id)
         
-        # Get URL from mis-anuncios (take the newest = highest r-number)
-        await send(ws, 'Page.navigate', {'url': 'https://www.milanuncios.com/mis-anuncios/'})
-        await asyncio.sleep(4)
-        ad_url = await js(ws, """(function(){
-            var links = Array.from(document.querySelectorAll('a[href*="/anuncios/r"]'));
-            var urls = links.map(l => l.href).filter(h => h.match(/r\\d+\\.htm/));
-            // Sort by number descending, take newest
-            urls.sort((a,b) => {
-                var na = parseInt(a.match(/r(\\d+)\\.htm/)[1]);
-                var nb = parseInt(b.match(/r(\\d+)\\.htm/)[1]);
-                return nb - na;
-            });
-            return urls.length > 0 ? urls[0] : 'not found';
-        })()""")
-        print(f"Ad URL: {ad_url}")
-        
-        return ad_url, notion_id
+        # Get first ad link
+        js = """(function() {
+  var links = Array.from(document.querySelectorAll('a[href*="/anuncios/r"]'));
+  if (links.length === 0) return "NO_ADS";
+  return links[0].href;
+})()"""
+        ad_url = await cdp_eval(ws, js, cmd_id)
+        print("AD_URL:", ad_url)
+        return ad_url
 
-ad_url, notion_id = asyncio.run(main())
-
-if 'milanuncios' in ad_url:
-    # Update Notion
-    result = subprocess.run(
-        [sys.executable, os.path.join(SCRIPT_DIR, 'update_notion_url.py'), ad_url],
-        capture_output=True, text=True, cwd=SCRIPT_DIR
+result = asyncio.run(main())
+if result and result.startswith("https://"):
+    notion_id = json.loads(pathlib.Path("milanuncios-poster/temp/product_data.json").read_text("utf-8"))["notion_id"]
+    update = subprocess.run(
+        ["python", "milanuncios-poster/update_notion_url.py", notion_id, result],
+        capture_output=True, text=True, timeout=30
     )
-    print("Notion:", result.stdout.strip()[-100:])
-    print(f"\nSUCCESS: {ad_url}")
-else:
-    print(f"ERROR: Could not get ad URL")
+    print("Notion update:", update.stdout.strip())
+elif result in ("NO_IMAGE", "ERROR"):
+    print("SKIPPED:", result)
