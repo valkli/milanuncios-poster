@@ -55,7 +55,17 @@ The photo upload uses a unique CDP-based injection method:
 
 ## Agent Skill
 
-This is an **OpenClaw agent skill** — triggered by voice command or cron job, executes the full publish pipeline end-to-end without manual steps.
+This is an **OpenClaw agent skill** — triggered by cron/job and executed through the local Python/CDP pipeline.
+
+### Important
+
+The production Milanuncios flow does **not** rely on `browser.act()` form filling anymore.
+The stable path is:
+- open publish form in profile `mixmix` on port `18801`
+- inject photo via `inject_photo_cdp.py`
+- fill and publish via CDP scripts (`publish_one.py`, `publish_via_cdp.py`, `fill_form_cdp.py`)
+
+Do not use old experimental snippets that call `browser.act(action="act", fields=[...])`, `browser.act(kind="fill", text=...)`, or calls without `request.ref/selector`. Those snippets are legacy experiments and produce noisy browser-tool errors while the real publication can still succeed via CDP.
 
 ---
 

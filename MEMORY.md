@@ -50,6 +50,12 @@
 **Фикс:** Селектор теперь ищет ТОЛЬКО `/publicar-anuncios-gratis/publicar`. Fallback с WARNING если не найден.
 **Правило для агента:** Каждый товар = НОВЫЙ таб формы → inject фото → заполнить → опубликовать → ЗАКРЫТЬ таб.
 
+## ⚠️ Инцидент 13.04.2026 — шумные browser.act ошибки при рабочей публикации
+**Симптом:** в логах шли ошибки вида `browser failed: request required`, `ref or selector is required`, `fields are required`, `locator.type timeout`, хотя публикации в профиле `mixmix` по факту проходили успешно.
+**Первопричина:** в проекте и связанных промптах оставались legacy-эксперименты с `browser.act()` для Milanuncios. Они использовали неверный формат вызова (`action="act"` без `request`, `kind="fill"` с `text` вместо `fields`, вызовы без `ref/selector`, старые refs вроде `e8/e9/e18`). Эти вызовы шумели в логах, но реальная публикация шла через отдельный CDP pipeline (`inject_photo_cdp.py` + `publish_one.py` / `publish_via_cdp.py`).
+**Вывод:** проблема была не в том, что открывался не тот профиль, а в смешении двух подходов: старого browser-tool сценария и рабочего CDP сценария.
+**Правило:** для боевого Milanuncios использовать только CDP pipeline. Legacy `browser.act()` snippets считать справочными/историческими, не использовать в production.
+
 ## Инциденты
 
 ### 20.03.2026 — Chromium заморозка (CDP)

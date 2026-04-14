@@ -1,0 +1,87 @@
+## Milanuncios Daily Job — Cleanup + Publish
+
+### ЧАСТЬ 1 — Очистка проданных товаров
+
+cd C:\Users\Val\.openclaw\workspace
+python milanuncios-poster/cleanup_sold_products.py > milanuncios-poster/temp/sold_check.json
+
+Читай temp/sold_check.json:
+- count=0 -> пропустить, идти к публикации
+- need_browser_delete: для каждого:
+  1. Открой URL объявления в браузере
+  2. Нажми 'Eliminar anuncio', подтверди
+  3. python milanuncios-poster/cleanup_sold_products.py --clear <notion_id>
+
+### ЧАСТЬ 2 — Публикация новых товаров (7-10 штук)
+
+Повторяй цикл до 10 раз (или пока NO_PRODUCTS):
+
+STEP 1 — Fetch:
+  python milanuncios-poster/fetch_product_for_milanuncios.py
+  -> 'NO_PRODUCTS' — стоп
+  -> 'OK <name> | remaining: N' — продолжать
+
+STEP 2 — Скачать фото (ОБЯЗАТЕЛЬНО):
+  python milanuncios-poster/download_product_image.py
+  -> 'OK url=<url> path=<path>' — запомнить IMAGE_URL, продолжать
+  -> 'NO_IMAGE' или 'ERROR ...' — ПРОПУСТИТЬ этот товар, взять следующий (вернуться к STEP 1)
+  ПРАВИЛО: публикуем ТОЛЬКО с фото. Без фото — скип.
+
+STEP 3 — Открыть браузер и форму:
+  browser.open(profile='openclaw')
+  navigate: https://www.milanuncios.com/publicar-anuncios-gratis/publicar?c=447
+  Подождать 3 секунды.
+
+STEP 4 — Загрузить фото через JS injection:
+  browser.act(kind='evaluate', fn=UPLOAD_JS) где UPLOAD_JS:
+    async () => {
+      const url = 'IMAGE_URL';
+      try {
+        const resp = await fetch(url);
+        const blob = await resp.blob();
+        const file = new File([blob], 'product.jpg', {type: blob.type || 'image/jpeg'});
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        const input = document.querySelector('#sui-MoleculePhotoUploader-id');
+        if (!input) return {ok: false, error: 'no input'};
+        input.files = dt.files;
+        input.dispatchEvent(new Event('change', {bubbles: true}));
+        input.dispatchEvent(new Event('input', {bubbles: true}));
+        return {ok: true, files: input.files.length};
+      } catch(e) { return {ok: false, error: e.message}; }
+    }
+  Если {ok: false} -> ПРОПУСТИТЬ товар, взять следующий (вернуться к STEP 1).
+  Если {ok: true} -> подождать 3 секунды (обработка загрузки).
+
+STEP 5 — Заполнить форму:
+  ВАЖНО: все поля заполнять через browser.act(kind='type'/'click') с refs, НЕ через JS value!
+  Получить refs через snapshot().
+
+  a) Заголовок: browser.act(click ref_title) -> browser.act(type ref_title, Name)
+  b) Описание: browser.act(click ref_desc) -> browser.act(type ref_desc, model)
+  c) Estado: browser.act(click ref_estado_dropdown)
+     -> JS: document.querySelectorAll('[role=option]')[1].click()  (индекс 1 = 'Practicamente nuevo')
+  d) Цена: browser.act(click ref_price) -> browser.act(type ref_price, Selling_Price)
+  e) Вес: JS find LABEL with text matching /^Hasta\s*Xkg$/ -> .click()
+     Weight/1000 -> ближайший: <2kg=2kg, <5kg=5kg, <10kg=10kg, <20kg=20kg, <30kg=30kg, else=No envios
+
+STEP 6 — Нажать Publicar:
+  JS: Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === 'Publicar')?.click()
+  Подождать 5 секунд.
+
+STEP 7 — Получить URL:
+  navigate to /mis-anuncios
+  JS: document.querySelectorAll('article a[href*="/anuncios/"]')[0]?.href
+
+STEP 8 — Обновить Notion:
+  python milanuncios-poster/update_notion_url.py <notion_id> <milanuncios_url>
+
+STEP 9 — Подождать 45 секунд перед следующим товаром.
+
+### ЧАСТЬ 3 — MANDATORY Telegram report
+
+- Удалено объявлений (продано): N
+- Опубликовано новых: N/10 (с фото: N, пропущено без фото: N)
+  [название] -> [URL]
+- Ошибки: нет / [описание]
+- Осталось в очереди: N
