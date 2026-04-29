@@ -58,6 +58,12 @@
 
 ## Инциденты
 
+### 28.04.2026 — UnicodeEncodeError + дубли из-за Notion latency
+- `publish_one.py` падал на `print("Title:", r)` при акцентированных символах в cp1251-консоли Windows после успешной загрузки фото и заполнения заголовка.
+- Фикс: backup `temp/publish_one.py.bak-20260428-encoding`, добавлен `sys.stdout/stderr.reconfigure(encoding='utf-8', errors='replace')`, `python -m py_compile publish_one.py` OK.
+- В этом запуске `publish_one.py` всё ещё возвращал предыдущий top ad URL, поэтому после batch нужно сверять `get_top_ads.py` и корректировать Notion URL. 28.04 первые 4 URL скорректированы вручную.
+- Из-за задержки обновления Notion один товар Oral-B iO 10 опубликовался повторно (2 дополнительных объявления). Нужен следующий техфикс: после успешного update делать локальный seen-set по notion_id и/или sleep/verify Notion before next fetch.
+
 ### 20.03.2026 — Chromium заморозка (CDP)
 - **Результат:** 0 из 7 опубликовано
 - **Причина:** `inject_photo_cdp.py` загрузил фото (86 KB) и начал инжект JS (116 KB) → CDP перестал отвечать

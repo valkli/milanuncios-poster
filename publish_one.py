@@ -6,6 +6,9 @@ import requests
 import subprocess
 import time
 
+sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 PORT = 18801
 
 async def cdp_eval(ws, js, cmd_id_list):
