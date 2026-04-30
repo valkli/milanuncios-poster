@@ -98,3 +98,11 @@
 ## Связанные файлы в папке
 - `README.md` — полная документация
 - `temp/` — временные файлы (чистить после сессии)
+
+### 29.04.2026 — Daily job safe stop after 1 publish
+- Cleanup cleared 1 non-compliant listing in Notion: Intex 58849NP (out_of_stock). Manual Milanuncios deletion still needed: https://www.milanuncios.com/otros-articulos-de-menaje/tobogan-hinchable-intex-591870047.htm
+- cleanup_sold_products count=0.
+- Published Intex 28637: https://www.milanuncios.com/anuncios/r592686111.htm.
+- Important: after update_notion_url OK, fetch_product_for_milanuncios still returned the same Intex 28637 with Milanuncios Posted populated. Job was stopped to avoid duplicate listing. Need fix/verify fetch filter or Notion latency handling before next mass run.
+- Telegram topic 4 report sent (message_id 13592), Zello queued.
+
