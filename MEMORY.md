@@ -106,3 +106,11 @@
 - Important: after update_notion_url OK, fetch_product_for_milanuncios still returned the same Intex 28637 with Milanuncios Posted populated. Job was stopped to avoid duplicate listing. Need fix/verify fetch filter or Notion latency handling before next mass run.
 - Telegram topic 4 report sent (message_id 13592), Zello queued.
 
+### 30.04.2026 — Daily job cleanup only, no products
+- cleanup_milanuncios cleared 2 non-compliant listings in Notion, both `out_of_stock`:
+  - Cecotec Cepillo de Aire Secador Moldeador Alisador Multifunción 8 Cabezales CeramicCare AirGlam Champagne → https://www.milanuncios.com/anuncios/r592420849.htm
+  - Cecotec Limpiador Aspirador de Tapicerias y Alfombras Conga 7000 Carpet&Spot Clean Steam XXL → https://www.milanuncios.com/anuncios/r591025904.htm
+- cleanup_sold_products count=0.
+- `fetch_product_for_milanuncios.py` returned `NO_PRODUCTS`, so 0/7 published.
+- Telegram topic 4 report sent (message_id 13666), Zello queued.
+
