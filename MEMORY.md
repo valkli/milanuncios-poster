@@ -114,3 +114,10 @@
 - `fetch_product_for_milanuncios.py` returned `NO_PRODUCTS`, so 0/7 published.
 - Telegram topic 4 report sent (message_id 13666), Zello queued.
 
+### 01.05.2026 — Daily job cleanup only, no products
+- cleanup_milanuncios: to_delete=0, ok=231, errors=0.
+- cleanup_sold_products count=0.
+- `fetch_product_for_milanuncios.py` returned `NO_PRODUCTS`, so 0/7 published.
+- Zello queued.
+- Telegram delivery issue: local Telegram Gateway cannot resolve `-1003319033023#4`; `sessions_send` to topic 4 timed out via gateway `18789`. Report text was prepared but topic delivery could not be confirmed from this cron runtime.
+
