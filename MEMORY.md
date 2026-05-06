@@ -121,3 +121,16 @@
 - Zello queued.
 - Telegram delivery issue: local Telegram Gateway cannot resolve `-1003319033023#4`; `sessions_send` to topic 4 timed out via gateway `18789`. Report text was prepared but topic delivery could not be confirmed from this cron runtime.
 
+### 05.05.2026 — Daily job successful, 5 published
+- cleanup_milanuncios --execute: to_delete=1, ok=230, deleted=1, errors=0.
+- Единственный cleared item: NEEWER Panel de Luz LED Softbox..., reason=`out_of_stock`, `milanuncios_url=https://www.milanuncios.com/anuncios/pending_review_neewer`; поскольку URL не был реальным `/anuncios/r...`, ручное удаление на сайте не потребовалось.
+- cleanup_sold_products returned `count=1` for the same NEEWER item. Browser check in profile `mixmix` opened a Milanuncios 404 page (`¡Vaya! No hemos encontrado esta página`), после чего запись очищена через `cleanup_sold_products.py --clear 2ec12f74-2f9e-81b7-b9ba-f55a43308241`.
+- Published 5/7 via `mixmix` profile on port `18801` using `inject_photo_cdp.py --port 18801` + `publish_via_cdp.py`:
+  1. Portabicicletas para 3 bicicletas con enganche, 20€ → https://www.milanuncios.com/anuncios/r592940710.htm
+  2. Impresora de inyección de tinta multifunción Expression A4..., 35€ → https://www.milanuncios.com/anuncios/r593827763.htm
+  3. Adaptador para calentador de agua, 18€ → https://www.milanuncios.com/anuncios/r593827833.htm
+  4. Silverline Tools 783171 Cama para mecánico 920 mm, 22€ → https://www.milanuncios.com/anuncios/r593827871.htm
+  5. iRobot Braava 380t, 33€ → https://www.milanuncios.com/anuncios/r593827917.htm
+- No skips, no publish errors.
+- Telegram topic 4 report sent successfully via direct Telegram Bot API (`message_id 13775`). Zello queued. Fetch still showed `remaining~100+`, so queue is healthy.
+
