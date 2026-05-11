@@ -134,3 +134,40 @@
 - No skips, no publish errors.
 - Telegram topic 4 report sent successfully via direct Telegram Bot API (`message_id 13775`). Zello queued. Fetch still showed `remaining~100+`, so queue is healthy.
 
+### 06.05.2026 — Daily job successful, 5 published
+- cleanup_milanuncios --execute: to_delete=0, ok=235, deleted=0, errors=0.
+- cleanup_sold_products returned `count=0`.
+- Published 5/7 via `mixmix` profile on port `18801` using `inject_photo_cdp.py --port 18801` + `publish_one.py`:
+  1. MidWest Homes for Pets modelo 550-36DR..., 26.95€ → https://www.milanuncios.com/anuncios/r593827943.htm
+  2. Trunki Ride-On Suitcase Blue/Green/Orange, 20€ → https://www.milanuncios.com/anuncios/r593994667.htm
+  3. Cecotec Limpiacristales Aspirador de Ventanas Conga Rockstar 3700 Glass..., 22.36€ → https://www.milanuncios.com/anuncios/r593995027.htm
+  4. Baseus Super Energy Car Jump Starter 10000mAh 1000A, 40€ → https://www.milanuncios.com/anuncios/r593995453.htm
+  5. H.Koenig Limpiador a Vapor 4 barras NV6400..., 49.95€ → https://www.milanuncios.com/anuncios/r593995898.htm
+- No skips, no publish errors.
+- Telegram topic 4 report sent successfully via direct Telegram Bot API (`message_id 13779`). Zello queued. Fetch still showed `remaining~100+`, so queue is healthy.
+
+### 07.05.2026 — Daily job published 5, but URL capture drift returned
+- cleanup_milanuncios --execute: to_delete=0, ok=240, deleted=0, errors=0.
+- cleanup_sold_products returned `count=0`.
+- Attempted/published 5/7 via `mixmix` profile on port `18801` using `inject_photo_cdp.py --port 18801` + `publish_via_cdp.py`:
+  1. Cámara 360 de videovigilancia WiFi compacta..., 32€ → https://www.milanuncios.com/anuncios/r593996215.htm
+  2. Mobiclinic pets carrito para perros..., 34€ → https://www.milanuncios.com/anuncios/r594187004.htm
+  3. Samsung SOLO Box Galaxy Buds Live, 20€ → https://www.milanuncios.com/anuncios/r594187042.htm
+  4. EGLO LATERRA 3, 27€ → script returned the same URL https://www.milanuncios.com/anuncios/r594187042.htm
+  5. Precaster Hora S2, 53€ → https://www.milanuncios.com/anuncios/r594187142.htm
+- Verification with `get_top_ads.py` immediately after run showed title↔URL drift/lag: top list displayed `EGLO LATERRA 3`, `MOBICLINIC PETS...`, `CÁMARA 360...`, while Samsung/Precaster were not clearly verifiable by fresh top-ad titles. So publication itself likely happened, but Notion URL mapping for the last 3 items cannot be trusted without manual Milanuncios check.
+- Telegram topic 4 report sent via direct Telegram Bot API. Zello queued.
+
+### 09.05.2026 — Daily job successful, 5 published
+- cleanup_milanuncios --execute: to_delete=2, ok=249, deleted=2, errors=0.
+- Cleared items in Notion: two Keter Jaipur loungers with `out_of_stock`; only one had a real manual-delete Milanuncios URL: https://www.milanuncios.com/anuncios/r590224604.htm . The second was legacy `/otros-articulos-de-menaje/...` and was not included in manual-delete list.
+- cleanup_sold_products returned `count=0`.
+- Published 5/7 via `mixmix` profile on port `18801` using `inject_photo_cdp.py --port 18801` + `publish_via_cdp.py`:
+  1. Conga Windroid 1290 Double Spray Connected, 79.5€ → https://www.milanuncios.com/anuncios/r594335894.htm
+  2. Logitech G Pro X SE..., 40€ → https://www.milanuncios.com/anuncios/r594481318.htm
+  3. Rowenta Turbo Silence Extreme VU5675..., 88.03€ → https://www.milanuncios.com/anuncios/r594481363.htm
+  4. Kensington VeriMark Guard USB-C..., 33€ → https://www.milanuncios.com/anuncios/r594481396.htm
+  5. Moulinex Subito Select..., 35.25€ → https://www.milanuncios.com/anuncios/r594481438.htm
+- No skips, no publish errors.
+- Telegram topic 4 report sent via direct Telegram Bot API (`message_id 13821`). Zello queued. Fetch still showed `remaining~100+`, so queue remains healthy.
+
