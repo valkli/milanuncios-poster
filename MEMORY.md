@@ -189,3 +189,9 @@
 - No skips, no publish errors.
 - Telegram topic 4 report sent via direct Telegram Bot API (`message_id 13894`). Zello queued. Fetch still showed `remaining~100+`, so queue remains healthy.
 
+### 15.05.2026 — Daily job cleanup only, no products
+- `cleanup_milanuncios.py --execute`: `to_delete=0`, `ok=278`, `deleted=0`, `errors=0`.
+- `cleanup_sold_products.py` returned `count=0`.
+- `fetch_product_for_milanuncios.py` returned `NO_PRODUCTS`, so `0/7` published.
+- Telegram topic 4 report sent successfully (`message_id 13927`). Zello queued.
+
