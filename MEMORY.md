@@ -195,3 +195,10 @@
 - `fetch_product_for_milanuncios.py` returned `NO_PRODUCTS`, so `0/7` published.
 - Telegram topic 4 report sent successfully (`message_id 13927`). Zello queued.
 
+### 16.05.2026 — Daily job cleanup only, no products
+- `cleanup_milanuncios.py --execute`: `to_delete=1`, `ok=277`, `deleted=1`, `errors=0`.
+- Cleared item in Notion: Faber-Castell Juego 201626 Grip Edition..., reason=`out_of_stock`, manual-delete URL: https://www.milanuncios.com/anuncios/r584936355.htm
+- `cleanup_sold_products.py` returned `count=0`.
+- `fetch_product_for_milanuncios.py` returned `NO_PRODUCTS`, so `0/7` published.
+- Telegram topic 4 report sent successfully (`message_id 13937`). Zello queued.
+
